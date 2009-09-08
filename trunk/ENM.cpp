@@ -1,5 +1,5 @@
 // ENM.cpp : Defines the entry point for the console application.
-//
+
 #include <cv.h>
 #include <highgui.h>
 #include <ctype.h>
