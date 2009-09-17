@@ -31,15 +31,16 @@ CFindButtons::CFindButtons()
 	3. |box_center - centre_of_mass| > r * 0.2
 	4. area_ratio (area_box/area_circle) < 0.3
 	5. cross_FOV w/ 5 pixels
-	6. 
+	6. angles ~ 60.0
+	7. eccentricity - 0.76~0.98
 	*/
-	constraint[0] = false;
-	constraint[1] = true;
-	constraint[2] = false;
-	constraint[3] = true;
-	constraint[4] = true;
-	constraint[5] = false;
-	constraint[6] = false;
+	constraint[0] = false;	// overlap
+	constraint[1] = false;	// hu moments
+	constraint[2] = false;	// box_center_dist
+	constraint[3] = true;	// area_ratio
+	constraint[4] = true;	// cross FOV
+	constraint[5] = false;	// angle
+	constraint[6] = false;	// eccentricity
 	constraint[7] = false;
 	constraint[8] = false;
 	constraint[9] = false;
@@ -66,6 +67,8 @@ CFindButtons::CFindButtons()
 	debug_image = true;
 	show_dbg = false;
 	resize_num = 2;
+
+	t_img = 0; st_img = 0; t_img_tiny = 0;
 }
 
 void CFindButtons::load_templates()
@@ -84,16 +87,20 @@ void CFindButtons::load_templates()
 
 CFindButtons::~CFindButtons() 
 {	
-	if (t_img_tiny)
+	if (t_img_tiny) {
 		cvReleaseImage( &t_img_tiny );
-
-	for (int i=0; i<number_of_buttons; i++) {
-		cvReleaseImage( &(st_img[i]) );
-		cvReleaseImage( &(t_img[i]) );
 	}
 
-	delete [] t_img;
-	delete [] st_img;
+	if (st_img) {
+		for (int i=0; i<number_of_buttons; i++) {
+			cvReleaseImage( &(st_img[i]) );
+			cvReleaseImage( &(t_img[i]) );
+		}
+
+		delete [] t_img;
+		delete [] st_img;
+	}
+	
 	delete [] cobject;
 }
 
@@ -628,10 +635,10 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 		if ((cross_FOV) && constraint[4])
 			continue;
 
-		if (fabs(theta) < th_th)
+		if ((fabs(theta) < th_th) && constraint[5])
 			continue;
 
-		if ((eccent > ecc_range[1]) || (eccent < ecc_range[0]))
+		if (((eccent > ecc_range[1]) || (eccent < ecc_range[0])) && constraint[6])
 			continue;
 
 		/* show region r */
@@ -642,6 +649,8 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 			rsptr[pt->x*3+2+pt->y*c_img->widthStep] = bcolors[i%9][0];
 
 			seg_img->imageData[pt->x+pt->y*seg_img->widthStep] = 255;
+
+			//printf("[%d]%d %d\n",j,pt->x,pt->y);
 		}
 
 		box_xy.x += cvRound(radius)*2/*(box_vtx[1].x-box_vtx[0].x)*/;
@@ -652,6 +661,7 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 		icenter.y = cvRound(center.y);
 
 		if (debug_image) {
+			//printf("[>> learn_buttons] no. of pixels = %d \n", r->total);
 			cvDrawRect(c_img, cvPoint(icenter.x - cvRound(radius), icenter.y - cvRound(radius)), 
 			cvPoint(icenter.x + cvRound(radius), icenter.y + cvRound(radius)), CV_RGB(0,255,0),1,CV_AA,0);
 			cvCircle( c_img, icenter, cvRound(radius), CV_RGB(255, 255, 0), 1, CV_AA, 0 );
@@ -669,8 +679,12 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 	}
 
 	if (debug_image) {
+		printf("[>> learn_buttons] total no. of MSER = %d\n", residual_MSER->total);
 		sprintf( user_str, "%s%s", filepath2, debugimg );
 		cvSaveImage( user_str, c_img );	
+
+		sprintf( user_str, "%ss%s", filepath2, debugimg );
+		cvSaveImage( user_str, seg_img );
 	}
 
 	cvReleaseImage( &c_img );
