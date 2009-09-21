@@ -74,6 +74,7 @@ public:
     CvPoint2D32f center;
     CvPoint icenter;
     float radius;
+	float zoom_x, zoom_y;
 	CvMoments moments;
 	CvHuMoments hu_moments;
 
@@ -82,6 +83,7 @@ public:
 	IplImage* t_img_tiny;
 
 	int number_of_buttons;
+	int type_buttons;
 	CObject *cobject;
 
 	CFindButtons();
@@ -91,6 +93,8 @@ public:
 	void load_templates();
 	void set_debug_info( char * );
 	void resize_factor( int a ) { resize_num = a; }
+	void set_type_buttons( int a ) { type_buttons = a; }
+	void set_zoom_factor( float a, float b) { zoom_x = a; zoom_y = b; }
 
 	void debug_on() { debug_image = true; }
 	void debug_off() { debug_image = false; }

@@ -17,17 +17,19 @@ using namespace std;
 
 CFindButtons::CFindButtons() 
 {
-	hu1_range[0] = 2e-3; hu1_range[1] = 1e-3;
-	hu2_range[0] = 1e-5; hu2_range[1] = 1e-5;
+	// param
+	hu1_range[0] = 0.002f; hu1_range[1] = 0.01f;
+	hu2_range[0] = 0.0f; hu2_range[1] = 0.0001f;
 	cdist_r = 0.2f;
-	aratio_r[0] = 0.5f; aratio_r[1] = 0.35f;
+	aratio_r[0] = 0.1f; aratio_r[1] = 0.5f;
 	cross_p = 5;
 	th_th = 60.0f;
-	ecc_range[0] = 0.76f;
-	ecc_range[1] = 0.98f;
+	ecc_range[0] = 0.46f;
+	ecc_range[1] = 1.0f;
+
 	/* constraint list : 
 	1. overlap with SURF points
-	2. Hu moments hu1<1e-3 hu1>2e-3 hu2>1e-5
+	2. Hu moments hu1[0]< hu1 < hu1[1] hu2[0] < hu2 < hu2[1]
 	3. |box_center - centre_of_mass| > r * 0.2
 	4. area_ratio (area_box/area_circle) < 0.3
 	5. cross_FOV w/ 5 pixels
@@ -35,31 +37,24 @@ CFindButtons::CFindButtons()
 	7. eccentricity - 0.76~0.98
 	*/
 	constraint[0] = false;	// overlap
-	constraint[1] = false;	// hu moments
+	constraint[1] = true;	// hu moments
 	constraint[2] = false;	// box_center_dist
 	constraint[3] = true;	// area_ratio
 	constraint[4] = true;	// cross FOV
 	constraint[5] = false;	// angle
-	constraint[6] = false;	// eccentricity
+	constraint[6] = true;	// eccentricity
 	constraint[7] = false;
 	constraint[8] = false;
 	constraint[9] = false;
 
-	/* template info */
-	objectInfo[0][0] = 0.001541f; objectInfo[0][1] = 0.946860f;
-	objectInfo[1][0] = 0.001459f; objectInfo[1][1] = 0.814954f;
-	objectInfo[2][0] = 0.001318f; objectInfo[2][1] = 0.798589f;
-	objectInfo[3][0] = 0.001104f; objectInfo[3][1] = 0.906159f;
-	objectInfo[4][0] = 0.001204f; objectInfo[4][1] = 0.768144f;
-	objectInfo[5][0] = 0.001496f; objectInfo[5][1] = 0.892861f;
-	objectInfo[6][0] = 0.001608f; objectInfo[6][1] = 0.869018f;
-	objectInfo[7][0] = 0.001504f; objectInfo[7][1] = 0.966262f;
-	objectInfo[8][0] = 0.001160f; objectInfo[8][1] = 0.919971f;
-	objectInfo[9][0] = 0.001448f; objectInfo[9][1] = 0.942105f;
+	/*for (int i=0; i<10; i++) {
+		constraint[i] = false;
+	}*/
 
 	storage = cvCreateMemStorage(0);
 
-	number_of_buttons = 10;
+	number_of_buttons = 8;	// type_buttons = 0
+	type_buttons = 0;
 	cobject = new CObject[number_of_buttons];
 
 	residual_MSER = cvCreateSeq( 0, sizeof(CvSeq), sizeof(CvRect), storage );
@@ -69,18 +64,56 @@ CFindButtons::CFindButtons()
 	resize_num = 2;
 
 	t_img = 0; st_img = 0; t_img_tiny = 0;
+
+	zoom_x = 1.0f; zoom_y = 1.0f;
 }
 
 void CFindButtons::load_templates()
 {
+	int buttons_start, buttons_end;
+
+	switch ( type_buttons ) {
+		case 0:	// 1-8
+			// param
+			hu1_range[0] = 0.5f; hu1_range[1] = 3.5f;
+			hu2_range[0] = 0.005f; hu2_range[1] = 10.0f;
+			ecc_range[0] = 0.46f;
+			ecc_range[1] = 0.99f;
+
+			number_of_buttons = 8;
+			buttons_start = 0;
+			buttons_end = 8;
+			break;
+		case 1:	// B1-B3
+			hu1_range[0] = 0.29f; hu1_range[1] = 2.3f;
+			hu2_range[0] = 0.04f; hu2_range[1] = 1.35f;
+			ecc_range[0] = 0.65f;
+			ecc_range[1] = 1.0f;
+
+			number_of_buttons = 3;
+			buttons_start = 8;
+			buttons_end = 11;
+			break;
+		case 2:	// UP & DOWN
+			hu1_range[0] = 0.5f; hu1_range[1] = 2.4f;
+			hu2_range[0] = 0.1f; hu2_range[1] = 5.0f;
+			ecc_range[0] = 0.93f;
+			ecc_range[1] = 0.991f;
+
+			number_of_buttons = 2;
+			buttons_start = 11;
+			buttons_end = 13;
+			break;
+	}
+
 	/* template loading */
 	t_img = new IplImage*[number_of_buttons];
 	st_img = new IplImage*[number_of_buttons];
-	for (int i=0; i<number_of_buttons; i++) {
+	for (int i=buttons_start; i<buttons_end; i++) {
 		sprintf( user_str, "%s%d.jpg", filepatht, i+1 );		
-		t_img[i] = cvLoadImage( user_str, 0 );
+		t_img[i-buttons_start] = cvLoadImage( user_str, 0 );
 		sprintf( user_str, "%sstest%d.jpg", filepatht, i+1 );		
-		st_img[i] = cvLoadImage( user_str, 0 );
+		st_img[i-buttons_start] = cvLoadImage( user_str, 0 );
 	}
 	t_img_tiny = cvCreateImage( cvSize(t_img[0]->width/number_of_buttons, t_img[0]->height/number_of_buttons), 8, 1 );
 }
@@ -198,8 +231,8 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 
 	/* set MSER parameters */
 	cvExtractMSER( g_img, NULL, &contours, storage, 
-		cvMSERParams( 1 /* delta */, cvRound(.001*r_img->width*r_img->height) /* min area */, 
-		cvRound(.4*r_img->width*r_img->height) /* max area */, .25 /* max variation */, .2 /* min diversity */ ) );
+		cvMSERParams( 1 /* delta */, cvRound(.0001*r_img->width*r_img->height) /* min area */, 
+		cvRound(.04*r_img->width*r_img->height) /* max area */, .25 /* max variation */, .2 /* min diversity */ ) );
 
 	uchar* rsptr = (uchar*)c_img->imageData;
 
@@ -213,6 +246,23 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 	for ( int i = contours->total-1; i >= 0; i-- ) {	/* check ith region/blob */
 		CvSeq* r = *(CvSeq**)cvGetSeqElem( contours, i );
 
+		//float pix_sum = 0.0f;
+		//int min_p = 1e3, max_p = -1;
+		//for ( int j = 0; j < r->total; j++ ) {
+		//	CvPoint* pt = CV_GET_SEQ_ELEM( CvPoint, r, j );
+		//	char gg = g_img->imageData[pt->x+pt->y*g_img->widthStep];
+		//	/*if (gg<0)
+		//		gg += 120;*/
+		//	pix_sum += (float)((float)gg+128.0f)/255.0f;
+
+		//	min_p = MIN(min_p,gg);
+		//	max_p = MAX(max_p,gg);
+		//}
+		//pix_sum /= (float)(r->total);
+
+		//if (pix_sum > 0.5f)
+		//	continue;
+
 		/* min enclosing rect & circle */
 		box = cvMinAreaRect2( r, 0 );
 		cvBoxPoints( box, box_vtx );
@@ -223,10 +273,12 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		cvSetZero( m_img );
 		for ( int j = 0; j < r->total; j++ ) {
 			CvPoint* pt = CV_GET_SEQ_ELEM( CvPoint, r, j );
-			m_img->imageData[pt->x+pt->y*m_img->width] = 255;
+			//printf("%d \n",m_img->imageData[pt->x+pt->y*m_img->widthStep]);
+			m_img->imageData[pt->x+pt->y*m_img->widthStep] = 127;
+			//printf("%d \n",m_img->imageData[pt->x+pt->y*m_img->widthStep]);
 		}
 
-		cvMoments( m_img, &moments, 0 );			
+		cvMoments( m_img, &moments, 1 );			
 		cvGetHuMoments( &moments, &hu_moments);
 
 		cvReleaseImage( &m_img );
@@ -242,7 +294,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		float mu00 = cvGetCentralMoment( &moments, 0, 0 );
 		float mu11 = cvGetCentralMoment( &moments, 1, 1 );
 
-		float theta = 0.5*atan2(2.0f*mu11/mu00, mu20/mu00-mu02/mu00)*180.0f/M_PI;
+		float theta = 0.5f*atan2(2.0f*mu11/mu00, mu20/mu00-mu02/mu00)*180.0f/M_PI;
 		float lambda1 = (mu20/mu00+mu02/mu00)/2.0f + sqrt(4.0f*mu11/mu00*mu11/mu00+(mu20/mu00-mu02/mu00)*(mu20/mu00-mu02/mu00))/2.0f;
 		float lambda2 = (mu20/mu00+mu02/mu00)/2.0f - sqrt(4.0f*mu11/mu00*mu11/mu00+(mu20/mu00-mu02/mu00)*(mu20/mu00-mu02/mu00))/2.0f;
 		float eccent = sqrt(1-lambda2/lambda1);
@@ -251,7 +303,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 			printf("[%s:%d] %f %f %.2f %f\n", debugimg, i, hu_moments.hu1, hu_moments.hu2, theta, eccent );
 
 		/**/
-		if ((((hu_moments.hu1 > hu1_range[0]) || (hu_moments.hu1 < hu1_range[1])) || (hu_moments.hu2 > hu2_range[0])) && constraint[1])
+		if ((((hu_moments.hu1 < hu1_range[0]) || (hu_moments.hu1 > hu1_range[1])) || ((hu_moments.hu2 < hu2_range[0]) || (hu_moments.hu2 > hu2_range[1]))) && constraint[1])
 			continue;
 
 		float cdist = sqrt((float)((box_center.x - centre_of_mass.x)*(box_center.x - centre_of_mass.x) 
@@ -261,12 +313,15 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		if ((cdist > radius * cdist_r) && constraint[2])
 			continue;
 
-		float a_ratio = (sqrt((float)((cvRound(box_vtx[0].x)-cvRound(box_vtx[1].x))*(cvRound(box_vtx[0].x)-cvRound(box_vtx[1].x))
+		/*float a_ratio = (sqrt((float)((cvRound(box_vtx[0].x)-cvRound(box_vtx[1].x))*(cvRound(box_vtx[0].x)-cvRound(box_vtx[1].x))
 			+(cvRound(box_vtx[0].y)-cvRound(box_vtx[1].y))*(cvRound(box_vtx[0].y)-cvRound(box_vtx[1].y))))*sqrt((float)((cvRound(box_vtx[1].x)-cvRound(box_vtx[2].x))*(cvRound(box_vtx[1].x)-cvRound(box_vtx[2].x))
-			+(cvRound(box_vtx[1].y)-cvRound(box_vtx[2].y))*(cvRound(box_vtx[1].y)-cvRound(box_vtx[2].y)))))/(M_PI*radius*radius);
+			+(cvRound(box_vtx[1].y)-cvRound(box_vtx[2].y))*(cvRound(box_vtx[1].y)-cvRound(box_vtx[2].y)))))/(M_PI*radius*radius);*/
+
+		float a_ratio = mu00/(M_PI*radius*radius);
 
 		/**/
-		if (((a_ratio > aratio_r[0]) && (a_ratio < aratio_r[1])) && constraint[3])
+		if (((a_ratio < aratio_r[0]) || (a_ratio > aratio_r[1])) && constraint[3])
+		//if (((a_ratio < aratio_r[0])) && constraint[3])
 			continue;
 
 		CvPoint min_bpt = cvPoint(1e3,1e3), max_bpt = cvPoint(-1,-1);
@@ -324,6 +379,33 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 	if ( residual_MSER->total ) {	/* if # of meaningful MSER is greater than 0 */
 		box_xy.x /= residual_MSER->total;
 		box_xy.y /= residual_MSER->total;
+
+		box_xy.x = (int)((float)box_xy.x*zoom_x);
+		box_xy.y = (int)((float)box_xy.y*zoom_y);
+
+		float min_area = 1e12, max_area = -1.0f;
+		int min_indx, max_indx;
+
+		for (int j=0; j<residual_MSER->total; j++) {
+			CvRect *rect = (CvRect*)cvGetSeqElem( residual_MSER, j );
+
+			float c_area = rect->width * rect->height;
+
+			if (min_area > c_area) {
+				min_area = c_area;
+				min_indx = j;
+			}
+
+			if (max_area < c_area) {
+				max_area = c_area;
+				max_indx = j;
+			}
+		}
+
+		CvRect *srect = (CvRect*)cvGetSeqElem( residual_MSER, min_indx );
+
+		box_xy.x = (float)srect->width;
+		box_xy.y = (float)srect->height;
 	}
 
 	if (debug_image) {
@@ -374,7 +456,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		for (int j=0; j<this->number_of_buttons; j++) {
 			
 			/* only for meaningful candidates :: if corr == 0, that denotes a meaningless matching. */
-			if (cobject[j].corr < 1.0f) {
+			if (cobject[j].corr > 0.5f) {
 				if (debug_image) {
 					cvLine( mm_img, cvPoint(j*seg_img->width/this->number_of_buttons+seg_img->width/(2*this->number_of_buttons),seg_img->height+seg_img->height/(2*this->number_of_buttons)), cobject[j].ctr, CV_RGB(128,128,128), 1 );
 					cvDrawRect( mm_img, cobject[j].ul, cobject[j].lr, CV_RGB(128,128,128), 1 );
@@ -387,11 +469,11 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 			else					/* new cluster ID */
 				cluster[j] = cluster_id++;
 
-			for (int k=0; k<10; k++) {
-				if ( (j != k) && (cobject[k].corr < 1.0f) ) {
+			for (int k=0; k<this->number_of_buttons; k++) {
+				if ( (j != k) && (cobject[k].corr > 0.5f) ) {
 					float ovd = overlap_degree( cobject[j], cobject[k] );
 
-					if ( ovd > exp(-1.0f)) {	/* overlapped area */
+					if ( ovd > exp(-1.0f) + 0.15f) {	/* overlapped area */
 
 						if (cluster[k] == -1)
 							cluster[k] = cluster[j];
@@ -434,7 +516,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		/* check for each cluster */
 		for (int k=0; k<cluster_id; k++) {
 
-			float l_min_val = 1e3;
+			float l_min_val = -1;
 			int min_idx = -1;
 			CvPoint l_min_loc;
 			int l_w,l_h;
@@ -472,8 +554,14 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 					int box_w = min(clRect[k].width, (int)box_max_x-(int)box_min_x+1);
 					int box_h = min(clRect[k].height, (int)box_max_y-(int)box_min_y+1);
 
-					IplImage* cl_img = cvCreateImage( cvSize(clRect[k].width,clRect[k].height), 8, 1 );
-					cvSetImageROI( seg_img, clRect[k] );
+					box_w = (int)((float)box_w*zoom_x);
+					box_h = (int)((float)box_h*zoom_y);
+
+					box_w -= (clRect[k].x + box_w > seg_img->width) ? (clRect[k].x + box_w - seg_img->width ) : 0;
+					box_h -= (clRect[k].y + box_h > seg_img->height) ? (clRect[k].y + box_h - seg_img->height ) : 0;
+
+					IplImage* cl_img = cvCreateImage( cvSize(box_w,box_h), 8, 1 );
+					cvSetImageROI( seg_img, cvRect(clRect[k].x,clRect[k].y,box_w,box_h) );
 					cvCopy( seg_img, cl_img );
 					cvResetImageROI( seg_img );
 
@@ -484,11 +572,11 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 					min_loc.x += clRect[k].x;
 					min_loc.y += clRect[k].y;
 
-					float l_ovd = overlap_degree( cvRect(box_min_x,box_min_y,box_w,box_h), 
-						cvRect(min_loc.x,min_loc.y,box_w,box_h) );
+					/*float l_ovd = overlap_degree( cvRect(box_min_x,box_min_y,box_w,box_h), 
+						cvRect(min_loc.x,min_loc.y,box_w,box_h) );*/
 
 					/* find the best number with minimum corr */
-					if (min_val < l_min_val) {
+					if (min_val > l_min_val) {
 						l_min_val = min_val;
 						min_idx = l;
 						l_min_loc = min_loc;
@@ -498,11 +586,17 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 				}
 			}				
 
+			printf("[%d] %.2f \n", min_idx, l_min_val );
+
 			/* reject false positive with 0.7 :: perfect matching == 0.0f */
-			if ((l_min_val < 0.7f) && (!skip_this_cluster)) {
+			if ((l_min_val > 0.8f) && (!skip_this_cluster)) {
 
 				if (debug_image) {
-					cvLine( mm_img, cvPoint(min_idx*seg_img->width/10+seg_img->width/20,seg_img->height+seg_img->height/20), cvPoint(l_min_loc.x+l_w/2,l_min_loc.y+l_h/2), CV_RGB(255,0,0), 2 );
+					cvLine( mm_img, 
+						cvPoint(min_idx*seg_img->width/this->number_of_buttons 
+						+ seg_img->width/(this->number_of_buttons*2),
+						seg_img->height+seg_img->height/(this->number_of_buttons*2)), 
+						cvPoint(l_min_loc.x+l_w/2,l_min_loc.y+l_h/2), CV_RGB(255,0,0), 2 );
 					cvDrawRect( mm_img, cvPoint(l_min_loc.x,l_min_loc.y), cvPoint(l_min_loc.x+l_w,l_min_loc.y+l_h), CV_RGB(255,0,0), 3 );
 				}
 
@@ -572,10 +666,10 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 		cvSetZero( m_img );
 		for ( int j = 0; j < r->total; j++ ) {
 			CvPoint* pt = CV_GET_SEQ_ELEM( CvPoint, r, j );
-			m_img->imageData[pt->x+pt->y*m_img->width] = 255;
+			m_img->imageData[pt->x+pt->y*m_img->width] = 127;
 		}
 
-		cvMoments( m_img, &moments, 0 );			
+		cvMoments( m_img, &moments, 1 );			
 		cvGetHuMoments( &moments, &hu_moments);
 
 		cvReleaseImage( &m_img );
@@ -600,7 +694,7 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 			printf("[%s:%d] %f %f %.2f %f\n", debugimg, i, hu_moments.hu1, hu_moments.hu2, theta, eccent );
 
 		/**/
-		if ((((hu_moments.hu1 > hu1_range[0]) || (hu_moments.hu1 < hu1_range[1])) || (hu_moments.hu2 > hu2_range[0])) && constraint[1])
+		if ((((hu_moments.hu1 < hu1_range[0]) || (hu_moments.hu1 > hu1_range[1])) || ((hu_moments.hu2 < hu2_range[0]) || (hu_moments.hu2 > hu2_range[1]))) && constraint[1])
 			continue;
 
 		float cdist = sqrt((float)((box_center.x - centre_of_mass.x)*(box_center.x - centre_of_mass.x) 
@@ -615,7 +709,7 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 			+(cvRound(box_vtx[1].y)-cvRound(box_vtx[2].y))*(cvRound(box_vtx[1].y)-cvRound(box_vtx[2].y)))))/(M_PI*radius*radius);
 
 		/**/
-		if (((a_ratio > aratio_r[0]) && (a_ratio < aratio_r[1])) && constraint[3])
+		if (((a_ratio < aratio_r[0]) || (a_ratio > aratio_r[1])) && constraint[3])
 			continue;
 
 		CvPoint min_bpt = cvPoint(1e3,1e3), max_bpt = cvPoint(-1,-1);
