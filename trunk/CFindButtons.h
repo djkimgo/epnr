@@ -34,7 +34,7 @@ static uchar bcolors[][3] =
 class CObject {
 public:
 	CvPoint ul, lr, ctr;
-	int w,h;
+	int w,h,id;
 	double hu, eccent, corr;
 
 	CvRect CObject::getRect() { return cvRect(ul.x,ul.y,w,h); }
@@ -66,6 +66,8 @@ public:
 
 	CvSeq* contours;
 	CvSeq* residual_MSER;
+	CvSeq* minSeq;
+	CvSeq* objSeq;
 	CvMemStorage* storage;
 
 	CvPoint pt0, pt;
@@ -84,7 +86,7 @@ public:
 
 	int number_of_buttons;
 	int type_buttons;
-	CObject *cobject;
+	//CObject *cobject;
 
 	CFindButtons();
 	~CFindButtons();
@@ -111,7 +113,7 @@ public:
 	void learn_buttons( IplImage* img );
 	float overlap_degree( CObject , CObject  );
 	float overlap_degree( CvRect , CvRect  );
-	void match_number_image( const IplImage* , const IplImage* , const int , const int , double &, CvPoint & );
+	void match_number_image( const IplImage* , const IplImage* , const int , const int , CvSeq *, int  );
 };
 
 #endif
