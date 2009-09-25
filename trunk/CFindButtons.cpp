@@ -223,12 +223,12 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 	int i,j,k,h,l;
 
 	/* init return array */
-	int **position = new int*[this->number_of_buttons];
+	int **position = 0;/* = new int*[this->number_of_buttons];
 	for ( i=0; i<this->number_of_buttons; i++) {
 		position[i] = new int[4];
 		for ( j=0; j<4; j++)
 			position[i][j] = -1;
-	}
+	}*/
 
 	IplImage* g_img = cvCreateImage( cvGetSize(r_img), 8, 1 );
 	IplImage* c_img = cvCreateImage( cvGetSize(r_img), 8, 3 );
@@ -507,13 +507,13 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 			}
 		}
 
-		//if (show_dbg) {
+		if (show_dbg) {
 			printf( "[cluster] " );
 			for (int k=0; k<objSeq->total; k++) {
 				printf( "%d", cluster[k]);
 			}
 			printf("\n");
-		//}
+		}
 
 		int *hist_num = new int[this->number_of_buttons];
 		CvRect *clRect = new CvRect[cluster_id];
@@ -546,6 +546,15 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 				}
 			}				
 		}
+
+		position = new int*[cluster_id+1];
+		for (k=0; k<cluster_id+1; k++) {
+			position[k] = new int[5];
+
+			for (l=0; l<5; l++)
+				position[k][l] = -1;
+		}
+		position[cluster_id][0] = -99;
 
 		int max_hist_idx = -1;
 		int max_hist = -1;
@@ -592,10 +601,11 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 					clRect[k].y+clRect[k].height), CV_RGB(255,0,0), 3 );
 			}
 
-			position[max_hist_idx][0] = clRect[k].x;
-			position[max_hist_idx][1] = clRect[k].y;
-			position[max_hist_idx][2] = clRect[k].x+clRect[k].width;
-			position[max_hist_idx][3] = clRect[k].y+clRect[k].height;
+			position[k][0] = clRect[k].x;
+			position[k][1] = clRect[k].y;
+			position[k][2] = clRect[k].x+clRect[k].width;
+			position[k][3] = clRect[k].y+clRect[k].height;
+			position[k][4] = max_hist_idx;
 		}
 
 		delete [] hist_num;
