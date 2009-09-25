@@ -196,7 +196,7 @@ void CFindButtons::match_number_image( const IplImage* t_img, const IplImage* s_
 	/* match template between resized template and current segmented image */
 	cvMatchTemplate( wh_img, tt_img, mt_img, CV_TM_SQDIFF_NORMED);
 
-	for (int i=0; i<10; i++) {
+	for (int i=0; i<100; i++) {
 		
 		min_val = 2.0f; max_val = -0.1f;
 		cvMinMaxLoc( mt_img, &min_val, &max_val, &min_loc, &max_loc );
@@ -220,11 +220,13 @@ void CFindButtons::match_number_image( const IplImage* t_img, const IplImage* s_
 
 int** CFindButtons::detect_buttons( IplImage *r_img )
 {
+	int i,j,k,h,l;
+
 	/* init return array */
 	int **position = new int*[this->number_of_buttons];
-	for (int i=0; i<this->number_of_buttons; i++) {
+	for ( i=0; i<this->number_of_buttons; i++) {
 		position[i] = new int[4];
-		for (int j=0; j<4; j++)
+		for ( j=0; j<4; j++)
 			position[i][j] = -1;
 	}
 
@@ -253,7 +255,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 	int count = 0;
 	cvClearSeq( residual_MSER );
 
-	for ( int i = contours->total-1; i >= 0; i-- ) {	/* check ith region/blob */
+	for (  i = contours->total-1; i >= 0; i-- ) {	/* check ith region/blob */
 		CvSeq* r = *(CvSeq**)cvGetSeqElem( contours, i );
 
 		/* min enclosing rect & circle */
@@ -264,7 +266,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		/* moments */
 		IplImage *m_img = cvCloneImage( g_img );
 		cvSetZero( m_img );
-		for ( int j = 0; j < r->total; j++ ) {
+		for (  j = 0; j < r->total; j++ ) {
 			CvPoint* pt = CV_GET_SEQ_ELEM( CvPoint, r, j );
 			m_img->imageData[pt->x+pt->y*m_img->widthStep] = 127;
 		}
@@ -311,7 +313,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 			continue;
 
 		CvPoint min_bpt = cvPoint(1e3,1e3), max_bpt = cvPoint(-1,-1);
-		for ( int k=0; k<4; k++)
+		for (  k=0; k<4; k++)
 		{
 			pt.x = cvRound(box_vtx[k].x);
 			pt.y = cvRound(box_vtx[k].y);
@@ -334,7 +336,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 			continue;
 
 		/* show region r */
-		for ( int j = 0; j < r->total; j++ ) {
+		for (  j = 0; j < r->total; j++ ) {
 			CvPoint* pt = CV_GET_SEQ_ELEM( CvPoint, r, j );
 			rsptr[pt->x*3+pt->y*c_img->widthStep] = bcolors[i%9][2];
 			rsptr[pt->x*3+1+pt->y*c_img->widthStep] = bcolors[i%9][1];
@@ -415,7 +417,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		cvClearSeq( objSeq );	// clear objects
 
 		/* template matching */
-		for (int j=0; j<this->number_of_buttons; j++) {
+		for ( j=0; j<this->number_of_buttons; j++) {
 
 			cvClearSeq(minSeq);
 
@@ -430,7 +432,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 			cvMerge( sts_img, sts_img, sts_img, 0, mm_img );
 			cvResetImageROI( mm_img );
 
-			for (int k=0; k<minSeq->total; k++) {
+			for ( k=0; k<minSeq->total; k++) {
 				float *mseq1 = (float*)cvGetSeqElem( minSeq, k );
 
 				CObject cobj;
@@ -463,11 +465,11 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		int *cluster = new int[objSeq->total];
 		int cluster_id = 0;
 		//CvRect *clRect = new CvRect[objSeq->total];
-		for (int j=0; j<objSeq->total; j++) 
+		for ( j=0; j<objSeq->total; j++) 
 			cluster[j] = -1;
 
 		/* forming clusters using overlapped degree between two regions */
-		for (int j=0; j<objSeq->total; j++) {
+		for ( j=0; j<objSeq->total; j++) {
 
 			CObject *obj_j = (CObject*)cvGetSeqElem( objSeq, j );
 			
@@ -517,10 +519,10 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		CvRect *clRect = new CvRect[cluster_id];
 
 		/* merge regions into each cluster */
-		for (int k=0; k<cluster_id; k++) {
+		for ( k=0; k<cluster_id; k++) {
 			clRect[k] = cvRect(-1,-1,-1,-1);
 
-			for (int l=0; l<objSeq->total; l++) {
+			for ( l=0; l<objSeq->total; l++) {
 
 				CObject *obj_l = (CObject*)cvGetSeqElem( objSeq, l );
 
@@ -548,16 +550,16 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 		int max_hist_idx = -1;
 		int max_hist = -1;
 
-		for (int k=0; k<cluster_id; k++) {
+		for ( k=0; k<cluster_id; k++) {
 
 			max_hist_idx = -1;
 			max_hist = -1;
 
-			for (int h=0; h<this->number_of_buttons; h++) {
+			for ( h=0; h<this->number_of_buttons; h++) {
 				hist_num[h] = 0;
 			}
 
-			for (int l=0; l<objSeq->total; l++) {
+			for ( l=0; l<objSeq->total; l++) {
 
 				CObject *obj_l = (CObject*)cvGetSeqElem( objSeq, l );
 
@@ -566,7 +568,7 @@ int** CFindButtons::detect_buttons( IplImage *r_img )
 				}
 			}
 
-			for (int h=0; h<this->number_of_buttons; h++) {
+			for ( h=0; h<this->number_of_buttons; h++) {
 				if (max_hist < hist_num[h]) {
 					max_hist = hist_num[h];
 					max_hist_idx = h;
@@ -724,6 +726,8 @@ Out_of_Func:
 
 void CFindButtons::learn_buttons( IplImage* r_img )
 {
+	int i,j,k;
+
 	IplImage* g_img = cvCreateImage( cvGetSize(r_img), 8, 1 );
 	IplImage* c_img = cvCreateImage( cvGetSize(r_img), 8, 3 );
 
@@ -749,7 +753,7 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 	int count = 0;
 	cvClearSeq( residual_MSER );
 
-	for ( int i = contours->total-1; i >= 0; i-- ) {	/* check ith region/blob */
+	for (  i = contours->total-1; i >= 0; i-- ) {	/* check ith region/blob */
 		CvSeq* r = *(CvSeq**)cvGetSeqElem( contours, i );
 
 		/* min enclosing rect & circle */
@@ -760,7 +764,7 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 		/* moments */
 		IplImage *m_img = cvCloneImage( g_img );
 		cvSetZero( m_img );
-		for ( int j = 0; j < r->total; j++ ) {
+		for (  j = 0; j < r->total; j++ ) {
 			CvPoint* pt = CV_GET_SEQ_ELEM( CvPoint, r, j );
 			m_img->imageData[pt->x+pt->y*m_img->width] = 127;
 		}
@@ -809,7 +813,7 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 			continue;
 
 		CvPoint min_bpt = cvPoint(1e3,1e3), max_bpt = cvPoint(-1,-1);
-		for ( int k=0; k<4; k++)
+		for (  k=0; k<4; k++)
 		{
 			pt.x = cvRound(box_vtx[k].x);
 			pt.y = cvRound(box_vtx[k].y);
@@ -832,7 +836,7 @@ void CFindButtons::learn_buttons( IplImage* r_img )
 			continue;
 
 		/* show region r */
-		for ( int j = 0; j < r->total; j++ ) {
+		for (  j = 0; j < r->total; j++ ) {
 			CvPoint* pt = CV_GET_SEQ_ELEM( CvPoint, r, j );
 			rsptr[pt->x*3+pt->y*c_img->widthStep] = bcolors[i%9][2];
 			rsptr[pt->x*3+1+pt->y*c_img->widthStep] = bcolors[i%9][1];
