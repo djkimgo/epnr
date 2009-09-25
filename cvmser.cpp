@@ -312,26 +312,28 @@ icvPreprocessMSER_8UC1( CvMat* src,
 			CvMat* img,
 			int*** heap_cur )
 {
+	int i,j;
+
 	int srccpt = src->step-src->cols;
 	int cpt_1 = img->cols-src->cols-1;
 	int* imgptr = img->data.i;
 
 	int level_size[256];
-	for ( int i = 0; i < 256; i++ )
+	for (  i = 0; i < 256; i++ )
 		level_size[i] = 0;
 
-	for ( int i = 0; i < src->cols+2; i++ )
+	for (  i = 0; i < src->cols+2; i++ )
 	{
 		*imgptr = -1;
 		imgptr++;
 	}
 	imgptr += cpt_1-1;
 	uchar* srcptr = src->data.ptr;
-	for ( int i = 0; i < src->rows; i++ )
+	for (  i = 0; i < src->rows; i++ )
 	{
 		*imgptr = -1;
 		imgptr++;
-		for ( int j = 0; j < src->cols; j++ )
+		for (  j = 0; j < src->cols; j++ )
 		{
 			*srcptr = 0xff-*srcptr;
 			level_size[*srcptr]++;
@@ -343,14 +345,14 @@ icvPreprocessMSER_8UC1( CvMat* src,
 		imgptr += cpt_1;
 		srcptr += srccpt;
 	}
-	for ( int i = 0; i < src->cols+2; i++ )
+	for (  i = 0; i < src->cols+2; i++ )
 	{
 		*imgptr = -1;
 		imgptr++;
 	}
 
 	heap_cur[0][0] = 0;
-	for ( int i = 1; i < 256; i++ )
+	for (  i = 1; i < 256; i++ )
 	{
 		heap_cur[i] = heap_cur[i-1]+level_size[i-1]+1;
 		heap_cur[i][0] = 0;
@@ -627,13 +629,15 @@ icvPreprocessMSER_8UC3( CvMSCRNode* node,
 			CvMat* dy,
 			int edge_blur_size )
 {
+	int i,j;
+
 	int srccpt = src->step-src->cols*3;
 	uchar* srcptr = src->data.ptr;
 	uchar* lastptr = src->data.ptr+3;
 	double* dxptr = dx->data.db;
-	for ( int i = 0; i < src->rows; i++ )
+	for (  i = 0; i < src->rows; i++ )
 	{
-		for ( int j = 0; j < src->cols-1; j++ )
+		for (  j = 0; j < src->cols-1; j++ )
 		{
 			*dxptr = icvChisquaredDistance( srcptr, lastptr );
 			dxptr++;
@@ -646,9 +650,9 @@ icvPreprocessMSER_8UC3( CvMSCRNode* node,
 	srcptr = src->data.ptr;
 	lastptr = src->data.ptr+src->step;
 	double* dyptr = dy->data.db;
-	for ( int i = 0; i < src->rows-1; i++ )
+	for (  i = 0; i < src->rows-1; i++ )
 	{
-		for ( int j = 0; j < src->cols; j++ )
+		for (  j = 0; j < src->cols; j++ )
 		{
 			*dyptr = icvChisquaredDistance( srcptr, lastptr );
 			dyptr++;
@@ -676,7 +680,7 @@ icvPreprocessMSER_8UC3( CvMSCRNode* node,
 	edge->right = nodeptr+1;
 	edge++;
 	nodeptr++;
-	for ( int i = 1; i < src->cols-1; i++ )
+	for (  i = 1; i < src->cols-1; i++ )
 	{
 		icvInitMSCRNode( nodeptr );
 		nodeptr->index = i;
@@ -690,7 +694,7 @@ icvPreprocessMSER_8UC3( CvMSCRNode* node,
 	icvInitMSCRNode( nodeptr );
 	nodeptr->index = src->cols-1;
 	nodeptr++;
-	for ( int i = 1; i < src->rows-1; i++ )
+	for (  i = 1; i < src->rows-1; i++ )
 	{
 		icvInitMSCRNode( nodeptr );
 		nodeptr->index = i<<16;
@@ -705,7 +709,7 @@ icvPreprocessMSER_8UC3( CvMSCRNode* node,
 		edge->right = nodeptr+1;
 		edge++;
 		nodeptr++;
-		for ( int j = 1; j < src->cols-1; j++ )
+		for (  j = 1; j < src->cols-1; j++ )
 		{
 			icvInitMSCRNode( nodeptr );
 			nodeptr->index = (i<<16)|j;
@@ -743,7 +747,7 @@ icvPreprocessMSER_8UC3( CvMSCRNode* node,
 	edge->right = nodeptr;
 	edge++;
 	nodeptr++;
-	for ( int i = 1; i < src->cols-1; i++ )
+	for (  i = 1; i < src->cols-1; i++ )
 	{
 		icvInitMSCRNode( nodeptr );
 		nodeptr->index = ((src->rows-1)<<16)|i;
